@@ -1,4 +1,5 @@
 from databuilder.query_language import Dataset
+from databuilder.codes import codelist_from_csv
 
 from tests.acceptance.comparative_booster_study.schema import coded_events
 from tests.acceptance.comparative_booster_study.schema import patients
@@ -7,6 +8,31 @@ from tests.acceptance.comparative_booster_study.schema import practice_registrat
 from tests.acceptance.comparative_booster_study.codelists import codelist
 
 from datetime import datetime, timedelta
+
+
+## define codelists
+CODELIST_DIR = "codelists"
+
+lung_cancer = codelist_from_csv(
+    CODELIST_DIR
+    / "lung-cancer-snomed.csv",
+    system="snomedct",
+    column="code",
+)
+
+diabetes = codelist_from_csv(
+    CODELIST_DIR
+    / "diabetes-codes.csv",
+    system="snomedct",
+    column="code",
+)
+
+systolic_bp = codelist_from_csv(
+    CODELIST_DIR
+    / "sbp.csv",
+    system="snomedct",
+    column="code",
+)
 
 # set up the dataset
 dataset = Dataset()
@@ -23,9 +49,10 @@ events_in_last_year = coded_events.take((coded_events.date > start_of_follow_up)
 # define variables for the population first
 age = patients.date_of_birth.difference_in_years(study_date)
 
-asthma = codelist(['AAA'], system="snomedct")
-has_asthma = coded_events.take(coded_events.snomedct_code.is_in(asthma)).exists_for_patient()
+# lung cancer 
+has_lung_cancer = coded_events.take(coded_events.snomedct_code.is_in(lung_cancer)).exists_for_patient()
 
+# registered with GP
 register_gp = practice_registrations.take(
         practice_registrations.start_date.is_on_or_before(start_of_follow_up)
         & (practice_registrations.end_date.is_after(study_date) | practice_registrations.end_date.is_null())
@@ -37,12 +64,10 @@ dataset.set_population((age >= 18) & has_asthma & register_gp)
 # variables - i.e. columns
 dataset.age = age
 dataset.sex = patients.sex
-dataset.asthma_diag_date = coded_events.take(coded_events.snomedct_code.is_in(asthma)).sort_by(coded_events.date).first_for_patient().date
+dataset.lung_cancer_diag_date = coded_events.take(coded_events.snomedct_code.is_in(lung_cancer)).sort_by(coded_events.date).first_for_patient().date
 
-diabetes = codelist(['BBB'], system="snomedct")
+# diabetes
 dataset.has_diabetes = coded_events.take(coded_events.snomedct_code.is_in(diabetes)).exists_for_patient()
 
-steroids = codelist(['CCC'], system="snomedct")
-dataset.steroids_last_year = events_in_last_year.take(events_in_last_year.snomedct_code.is_in(steroids)).exists_for_patient()
-
-dataset.steroids_count = events_in_last_year.take(events_in_last_year.snomedct_code.is_in(steroids)).count_for_patient()
+# blood pressure
+dataset.bp_last = events_in_last_year.take(events_in_last_year.snomedct_code.is_in(sbp)).value()
