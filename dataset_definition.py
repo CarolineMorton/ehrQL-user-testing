@@ -34,6 +34,13 @@ systolic_bp = codelist_from_csv(
     column="code",
 )
 
+steroids = codelist_from_csv(
+    CODELIST_DIR
+    / "steroids.csv",
+    system="snomedct",
+    column="code",
+)
+
 # set up the dataset
 dataset = Dataset()
 
@@ -71,3 +78,6 @@ dataset.has_diabetes = coded_events.take(coded_events.snomedct_code.is_in(diabet
 
 # blood pressure
 dataset.bp_last = events_in_last_year.take(events_in_last_year.snomedct_code.is_in(sbp)).value()
+
+# steroids
+dataset.steroids_count = events_in_last_year.take(events_in_last_year.snomedct_code.is_in(steroids)).count()
