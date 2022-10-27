@@ -13,9 +13,9 @@ from datetime import datetime, timedelta
 ## define codelists
 CODELIST_DIR = "codelists"
 
-lung_cancer = codelist_from_csv(
+asthma = codelist_from_csv(
     CODELIST_DIR
-    / "lung-cancer-snomed.csv",
+    / "asthma.csv",
     system="snomedct",
     column="code",
 )
@@ -27,25 +27,18 @@ diabetes = codelist_from_csv(
     column="code",
 )
 
-systolic_bp = codelist_from_csv(
-    CODELIST_DIR
-    / "sbp.csv",
-    system="snomedct",
-    column="code",
-)
-
 steroids = codelist_from_csv(
     CODELIST_DIR
     / "steroids.csv",
     system="snomedct",
-    column="code",
+    column="snomed_id",
 )
 
 # set up the dataset
 dataset = Dataset()
 
 # Convert datetime object to date object.
-date_from_str = datetime.strptime("2022-08-14", "%Y-%m-%d")
+date_from_str = datetime.strptime("2022-08-01", "%Y-%m-%d")
 study_date = date_from_str.date()
 start_of_follow_up = study_date - timedelta(days=365)
 
@@ -56,8 +49,8 @@ events_in_last_year = coded_events.take((coded_events.date > start_of_follow_up)
 # define variables for the population first
 age = patients.date_of_birth.difference_in_years(study_date)
 
-# lung cancer 
-has_lung_cancer = coded_events.take(coded_events.snomedct_code.is_in(lung_cancer)).exists_for_patient()
+# asthma 
+has_asthma = coded_events.take(coded_events.snomedct_code.is_in(asthma)).exists_for_patient()
 
 # registered with GP
 register_gp = practice_registrations.take(
@@ -71,13 +64,11 @@ dataset.set_population((age >= 18) & has_asthma & register_gp)
 # variables - i.e. columns
 dataset.age = age
 dataset.sex = patients.sex
-dataset.lung_cancer_diag_date = coded_events.take(coded_events.snomedct_code.is_in(lung_cancer)).sort_by(coded_events.date).first_for_patient().date
+dataset.asthma_diag_data = coded_events.take(coded_events.snomedct_code.is_in(asthma)).sort_by(coded_events.date).first_for_patient().date
 
 # diabetes
 dataset.has_diabetes = coded_events.take(coded_events.snomedct_code.is_in(diabetes)).exists_for_patient()
 
-# blood pressure
-dataset.bp_last = events_in_last_year.take(events_in_last_year.snomedct_code.is_in(sbp)).value()
-
 # steroids
+dataset.steroids = events_in_last_year.take(events_in_last_year.snomedct_code.is_in(steroids)).exists_for_patient()
 dataset.steroids_count = events_in_last_year.take(events_in_last_year.snomedct_code.is_in(steroids)).count()
